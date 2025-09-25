@@ -1,4 +1,5 @@
 package com.project.shopapp.services.product;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.project.shopapp.dtos.ProductDTO;
 import com.project.shopapp.dtos.ProductImageDTO;
 import com.project.shopapp.responses.product.ProductResponse;
@@ -29,4 +30,6 @@ public interface IProductService {
     Product likeProduct(Long userId, Long productId) throws Exception;
     Product unlikeProduct(Long userId, Long productId) throws Exception;
     List<ProductResponse> findFavoriteProductsByUserId(Long userId) throws Exception;
+
+    List<Product> getProducts(int page, int limit) throws JsonProcessingException;
 }

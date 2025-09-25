@@ -1,5 +1,6 @@
 package com.project.shopapp.services.product;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.project.shopapp.dtos.ProductDTO;
 import com.project.shopapp.dtos.ProductImageDTO;
 import com.project.shopapp.exceptions.DataNotFoundException;
@@ -21,10 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,7 +33,9 @@ public class ProductService implements IProductService{
     private final CategoryRepository categoryRepository;
     private final ProductImageRepository productImageRepository;
     private final FavoriteRepository favoriteRepository;
+    private final RedisService redisService;
     private static String UPLOADS_FOLDER = "uploads";
+
     @Override
     @Transactional
     public Product createProduct(ProductDTO productDTO) throws DataNotFoundException {
@@ -63,6 +63,7 @@ public class ProductService implements IProductService{
         }
         throw new DataNotFoundException("Cannot find product with id =" + productId);
     }
+
     @Override
     public List<Product> findProductsByIds(List<Long> productIds) {
         return productRepository.findProductsByIds(productIds);
@@ -76,6 +77,7 @@ public class ProductService implements IProductService{
         productsPage = productRepository.searchProducts(categoryId, keyword, pageRequest);
         return productsPage.map(ProductResponse::fromProduct);
     }
+
     @Override
     @Transactional
     public Product updateProduct(
@@ -151,6 +153,7 @@ public class ProductService implements IProductService{
         productRepository.save(existingProduct);
         return productImageRepository.save(newProductImage);
     }
+
     @Override
     public void deleteFile(String filename) throws IOException {
         // Đường dẫn đến thư mục chứa file
@@ -166,10 +169,7 @@ public class ProductService implements IProductService{
             throw new FileNotFoundException("File not found: " + filename);
         }
     }
-    private boolean isImageFile(MultipartFile file) {
-        String contentType = file.getContentType();
-        return contentType != null && contentType.startsWith("image/");
-    }
+
     @Override
     public String storeFile(MultipartFile file) throws IOException {
         if (!isImageFile(file) || file.getOriginalFilename() == null) {
@@ -214,6 +214,7 @@ public class ProductService implements IProductService{
         // Return the liked product
         return productRepository.findById(productId).orElse(null);
     }
+
     @Override
     @Transactional
     public Product unlikeProduct(Long userId, Long productId) throws Exception {
@@ -243,5 +244,41 @@ public class ProductService implements IProductService{
         return favoriteProducts.stream()
                 .map(ProductResponse::fromProduct)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Product> getProducts(int page, int limit) throws JsonProcessingException {
+        List<Product> products = new ArrayList<>();
+        // get list ids in cache
+        List<Long> idsCache = redisService.getProductIdsForPage(page, limit);
+        // if list ids exits
+        if (idsCache != null && !idsCache.isEmpty()) {
+            // get product based on id from cache
+            for (Long id : idsCache) {
+                Product product = redisService.getProduct(id);
+                if (product != null) {
+                    products.add(product);
+                }
+                // if product is not exist in cache
+                // get product from db
+                Product productDB = productRepository.findById(id).get();
+                if (productDB != null) {
+                    products.add(product);
+                    // add product to cache
+                    redisService.cacheProduct(productDB);
+                }
+            }
+        }
+        //if list ids not exist
+        products = productRepository.findAll();
+            // get product list from DB
+            // add product page to cache
+
+        return List.of();
+    }
+
+    private boolean isImageFile(MultipartFile file) {
+        String contentType = file.getContentType();
+        return contentType != null && contentType.startsWith("image/");
     }
 }

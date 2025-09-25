@@ -25,7 +25,7 @@ public class RedisConfig {
     @Value("${spring.data.redis.host}") // Read 'spring.data.redis.host' property from application.yml
     private String redisHost;
 
-    @Value("${spring.data.redis.port}") // Read 'spring.data.redis.port' property from application.yml
+    @Value("${spring.data.redis.port}")
     private int redisPort;
 
     @Bean
@@ -36,9 +36,7 @@ public class RedisConfig {
         return new LettuceConnectionFactory(configuration);
     }
     @Bean
-    public RedisTemplate<String, Object> redisTemplate()
-
-    {
+    public RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(redisConnectionFactory());
 
