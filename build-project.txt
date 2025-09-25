@@ -1,0 +1,7 @@
+check my sql on docker:
+	in sh-4.4
+	mysql -u root -p
+	pass: Abc123456789@
+check redis:
+	docck exce -it redis-container /bin/sh
+	
